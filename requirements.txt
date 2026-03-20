@@ -1,0 +1,21 @@
+# GCP
+google-cloud-bigquery>=3.17.1
+google-cloud-storage>=2.18.2
+google-cloud-pubsub>=2.19.0
+
+# Beam
+apache-beam[gcp]==2.61.0
+
+# Spark
+pyspark==3.5.0
+
+# dbt
+dbt-bigquery>=1.7.0
+
+# Utilities
+pandas>=2.1.4
+faker>=22.0.0
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=7.4.4
