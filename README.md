@@ -107,7 +107,7 @@ for development workloads.
 
 ## Roadmap
 
-- [ ] Airflow DAG for end-to-end orchestration
+- [x] Airflow DAG for end-to-end orchestration
 - [ ] dbt models for data warehouse modeling  
 - [ ] GitHub Actions CI/CD pipeline
 - [ ] Dataflow deployment for production streaming
