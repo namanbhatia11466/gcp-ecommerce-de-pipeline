@@ -16,6 +16,8 @@ Pub/Sub → Apache Beam → GCS → PySpark → BigQuery
 | Landing | `scripts/pull_messages.py` | Pulls messages from Pub/Sub, saves to GCS |
 | Processing | `pipeline/beam_pipeline.py` | Validates and enriches orders via Apache Beam |
 | Transform | `spark/transform.py` | PySpark transforms, loads to BigQuery |
+| Orchestration | `airflow/dags/orders_pipeline_dag.py` | Chains the four stages above end-to-end |
+| Modeling | `dbt_project/` | Staging + marts models on top of the raw BigQuery table |
 
 ## GCP Services Used
 
@@ -73,7 +75,16 @@ python pipeline/beam_pipeline.py
 
 # Step 4 — Run Spark transform → BigQuery
 python spark/transform.py
+
+# Step 5 — Build dbt staging + marts models on top of BigQuery
+export DBT_PROFILES_DIR=dbt_project   # Windows: set DBT_PROFILES_DIR=dbt_project
+dbt run --project-dir dbt_project
+dbt test --project-dir dbt_project
 ```
+
+Or orchestrate steps 1–4 as a single Airflow DAG (`orders_pipeline`) once
+`docker compose up -d` is running — trigger it from the webserver UI at
+`localhost:8080`.
 
 ## Project Structure
 ```
@@ -82,8 +93,8 @@ gcp-ecommerce-de-pipeline/
 ├── pipeline/           # Apache Beam pipeline
 ├── scripts/            # Utility scripts
 ├── spark/              # PySpark transforms
-├── airflow/dags/       # Airflow DAGs (coming soon)
-├── dbt_project/        # dbt models (coming soon)
+├── airflow/dags/       # Airflow DAG orchestrating the pipeline
+├── dbt_project/        # dbt staging + marts models
 ├── docker-compose.yml  # Local Airflow + Spark
 └── requirements.txt
 ```
@@ -108,6 +119,6 @@ for development workloads.
 ## Roadmap
 
 - [x] Airflow DAG for end-to-end orchestration
-- [ ] dbt models for data warehouse modeling  
+- [x] dbt models for data warehouse modeling  
 - [ ] GitHub Actions CI/CD pipeline
 - [ ] Dataflow deployment for production streaming

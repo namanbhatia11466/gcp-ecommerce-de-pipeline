@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: fct_orders
+    description: Order-grain fact table, one row per order.
+    columns:
+      - name: order_id
+        tests:
+          - unique
+          - not_null
+
+  - name: agg_sales_daily
+    description: >
+      Daily order counts and revenue, grouped by status and country.
+      Grain is one row per (order_date, status, country).

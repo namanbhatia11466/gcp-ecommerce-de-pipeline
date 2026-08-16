@@ -18,6 +18,7 @@ airflow/logs/
 dbt_project/target/
 dbt_project/dbt_packages/
 dbt_project/logs/
+dbt_project/.user.yml
 
 # Claude Code
 CLAUDE.md

@@ -1,0 +1,22 @@
+name: "orders_pipeline"
+version: "1.0.0"
+config-version: 2
+
+profile: "orders_pipeline"
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  orders_pipeline:
+    staging:
+      +materialized: view
+      +schema: "{{ env_var('BQ_STAGING_DATASET', 'staging') }}"
+    marts:
+      +materialized: table
+      +schema: "{{ env_var('BQ_MARTS_DATASET', 'marts') }}"

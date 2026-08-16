@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: >
+      Cleaned, one-row-per-order staging view on top of the raw BigQuery
+      orders table loaded by spark/transform.py.
+    columns:
+      - name: order_id
+        description: Unique order identifier.
+        tests:
+          - unique
+          - not_null
+      - name: user_id
+        tests:
+          - not_null
+      - name: amount
+        tests:
+          - not_null
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["PLACED", "PAID", "SHIPPED", "DELIVERED"]
+      - name: order_date
+        tests:
+          - not_null

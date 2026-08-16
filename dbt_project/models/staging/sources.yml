@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: "{{ env_var('BQ_RAW_DATASET') }}"
+    description: Raw orders loaded by spark/transform.py.
+    tables:
+      - name: orders
+        description: One row per order, as landed by the Spark load job.
