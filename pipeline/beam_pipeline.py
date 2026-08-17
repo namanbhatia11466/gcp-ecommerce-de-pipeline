@@ -2,17 +2,30 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
 import json
 import os
+import sys
 import logging
 from datetime import datetime
+from pathlib import Path
 from dotenv import load_dotenv
 
+sys.stdout.reconfigure(encoding="utf-8")
 load_dotenv()
 
-PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+LOCAL_MODE = os.getenv("LOCAL_MODE", "false").lower() == "true"
+PROJECT_ID = os.getenv("GCP_PROJECT_ID", "local-dev" if LOCAL_MODE else None)
 BUCKET = os.getenv("GCP_BUCKET_NAME")
-INPUT_PATH = f"gs://{BUCKET}/landing/orders/*.jsonl"
-OUTPUT_PATH = f"gs://{BUCKET}/raw/orders/orders"
-DEAD_LETTER_PATH = f"gs://{BUCKET}/dead_letter/orders"
+
+if LOCAL_MODE:
+    # Local directory standing in for the bucket - see docker-compose.yml
+    # for why GCS isn't emulated the same way Pub/Sub is.
+    _DATA_ROOT = Path(__file__).resolve().parent.parent / "data" / "gcs"
+    INPUT_PATH = str(_DATA_ROOT / "landing" / "orders" / "*.jsonl")
+    OUTPUT_PATH = str(_DATA_ROOT / "raw" / "orders" / "orders")
+    DEAD_LETTER_PATH = str(_DATA_ROOT / "dead_letter" / "orders")
+else:
+    INPUT_PATH = f"gs://{BUCKET}/landing/orders/*.jsonl"
+    OUTPUT_PATH = f"gs://{BUCKET}/raw/orders/orders"
+    DEAD_LETTER_PATH = f"gs://{BUCKET}/dead_letter/orders"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,11 +62,17 @@ class ValidateAndEnrich(beam.DoFn):
 
 
 def run():
-    options = PipelineOptions(
-        runner="DirectRunner",
-        project=PROJECT_ID,
-        temp_location=f"gs://{BUCKET}/temp",
-    )
+    if LOCAL_MODE:
+        options = PipelineOptions(runner="DirectRunner", project=PROJECT_ID)
+        # WriteToText won't create parent directories itself.
+        Path(OUTPUT_PATH).parent.mkdir(parents=True, exist_ok=True)
+        Path(DEAD_LETTER_PATH).parent.mkdir(parents=True, exist_ok=True)
+    else:
+        options = PipelineOptions(
+            runner="DirectRunner",
+            project=PROJECT_ID,
+            temp_location=f"gs://{BUCKET}/temp",
+        )
 
     print("🚀 Starting Beam pipeline (batch mode)...")
     print(f"   Input:  {INPUT_PATH}")
@@ -92,7 +111,10 @@ def run():
 
     print("-" * 50)
     print("✅ Pipeline complete!")
-    print(f"   Check output: gsutil ls gs://{BUCKET}/raw/orders/")
+    if LOCAL_MODE:
+        print(f"   Check output: ls {Path(OUTPUT_PATH).parent}")
+    else:
+        print(f"   Check output: gsutil ls gs://{BUCKET}/raw/orders/")
 
 
 if __name__ == "__main__":

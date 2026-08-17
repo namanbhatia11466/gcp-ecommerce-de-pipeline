@@ -2,16 +2,19 @@ import json
 import time
 import random
 import argparse
+import sys
 from datetime import datetime
 from faker import Faker
 from google.cloud import pubsub_v1
 from dotenv import load_dotenv
 import os
 
+sys.stdout.reconfigure(encoding="utf-8")
 load_dotenv()
 
 fake = Faker()
-PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+LOCAL_MODE = os.getenv("LOCAL_MODE", "false").lower() == "true"
+PROJECT_ID = os.getenv("GCP_PROJECT_ID", "local-dev" if LOCAL_MODE else None)
 TOPIC_ID = "orders-raw-topic"
 
 def generate_order():

@@ -23,6 +23,11 @@ dbt_project/.user.yml
 # Claude Code
 CLAUDE.md
 
+# LOCAL_MODE runtime scratch (bucket + warehouse stand-ins) + full raw dataset
+data/gcs/
+data/warehouse/
+data/raw/
+
 # OS
 .DS_Store
 Thumbs.db

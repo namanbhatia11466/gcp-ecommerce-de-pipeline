@@ -5,22 +5,38 @@ from pyspark.sql.functions import (
 )
 from pyspark.sql.types import DoubleType, IntegerType
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
+sys.stdout.reconfigure(encoding="utf-8")
 load_dotenv()
 
-PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+LOCAL_MODE = os.getenv("LOCAL_MODE", "false").lower() == "true"
+PROJECT_ID = os.getenv("GCP_PROJECT_ID", "local-dev" if LOCAL_MODE else None)
 BUCKET = os.getenv("GCP_BUCKET_NAME")
 BQ_DATASET = os.getenv("BQ_RAW_DATASET")
-INPUT_PATH = f"gs://{BUCKET}/raw/orders/*.jsonl"
 BQ_TABLE = f"{PROJECT_ID}.{BQ_DATASET}.orders"
+
+if LOCAL_MODE:
+    _DATA_ROOT = Path(__file__).resolve().parent.parent / "data" / "gcs"
+    _WAREHOUSE_ROOT = Path(__file__).resolve().parent.parent / "data" / "warehouse"
+    INPUT_PATH = str(_DATA_ROOT / "raw" / "orders" / "*.jsonl")
+    LOCAL_OUTPUT_PATH = str(_WAREHOUSE_ROOT / "orders")
+else:
+    INPUT_PATH = f"gs://{BUCKET}/raw/orders/*.jsonl"
 
 
 def create_spark_session():
+    builder = SparkSession.builder.appName("OrdersTransform").master("local[*]")
+
+    if LOCAL_MODE:
+        # No GCS/BigQuery connector needed - reads/writes local paths only,
+        # so no reason to pull in and configure those jars.
+        return builder.getOrCreate()
+
     return (
-        SparkSession.builder
-        .appName("OrdersTransform")
-        .master("local[*]")
+        builder
         .config(
             "spark.jars.packages",
             "com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.36.1"
@@ -47,8 +63,17 @@ def create_spark_session():
 def transform(spark: SparkSession):
     print(f"📥 Reading from {INPUT_PATH}...")
 
-    # Read raw JSONL from GCS
-    df = spark.read.json(INPUT_PATH)
+    if LOCAL_MODE:
+        # Expand the glob in Python rather than handing Spark a wildcard:
+        # Hadoop's local FileSystem glob resolution needs winutils.exe on
+        # Windows, which we're deliberately not pulling in for a local-only
+        # demo path. Explicit file paths skip that code path entirely.
+        input_files = [str(p) for p in Path(INPUT_PATH).parent.glob(Path(INPUT_PATH).name)]
+        if not input_files:
+            raise SystemExit(f"No input files found matching {INPUT_PATH} - run the beam stage first.")
+        df = spark.read.json(input_files)
+    else:
+        df = spark.read.json(INPUT_PATH)
 
     print(f"   Raw record count: {df.count()}")
     print(f"   Schema:")
@@ -137,13 +162,42 @@ def load_to_bigquery(df, spark: SparkSession):
     print(f"✅ Successfully loaded to {BQ_TABLE}")
 
 
+def load_to_local_parquet(df):
+    # BigQuery has no local emulator that works reliably with Spark's
+    # BigQuery Storage Write API connector, so LOCAL_MODE lands the same
+    # transformed data as partitioned Parquet instead - same transform
+    # logic, only the sink differs. dbt's staging/marts models still
+    # require a real BigQuery connection.
+    #
+    # Written via pandas/pyarrow rather than df.write.parquet(): Spark's
+    # own writer goes through Hadoop's FileOutputCommitter, which needs
+    # winutils.exe on Windows (no official Apache build exists, and we're
+    # not pulling in an unofficial binary just for a local demo path).
+    # LOCAL_MODE data is small enough that collecting to pandas is fine.
+    print(f"\n📤 Writing Parquet to {LOCAL_OUTPUT_PATH} (partitioned by order_date)...")
+
+    pdf = df.toPandas()
+    for order_date, group in pdf.groupby("order_date"):
+        partition_dir = Path(LOCAL_OUTPUT_PATH) / f"order_date={order_date}"
+        partition_dir.mkdir(parents=True, exist_ok=True)
+        existing = list(partition_dir.glob("part-*.parquet"))
+        group.drop(columns=["order_date"]).to_parquet(
+            partition_dir / f"part-{len(existing):04d}.parquet", index=False
+        )
+
+    print(f"✅ Successfully wrote to {LOCAL_OUTPUT_PATH}")
+
+
 def run():
     spark = create_spark_session()
     spark.sparkContext.setLogLevel("WARN")  # reduce noise
 
     try:
         df_clean = transform(spark)
-        load_to_bigquery(df_clean, spark)
+        if LOCAL_MODE:
+            load_to_local_parquet(df_clean)
+        else:
+            load_to_bigquery(df_clean, spark)
     finally:
         spark.stop()
         print("\n🏁 Spark session closed.")

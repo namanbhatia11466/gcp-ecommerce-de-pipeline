@@ -89,5 +89,25 @@ services:
       - ./spark:/opt/spark/work-dir/jobs
       - ./key.json:/opt/spark/work-dir/key.json
 
+  # ── LOCAL_MODE: real Pub/Sub emulator standing in for live GCP ──────────
+  # Only needed when running with LOCAL_MODE=true. Not part of the default
+  # `docker compose up -d` flow above (which targets the real-GCP path) -
+  # start this explicitly with `docker compose --profile local up -d`.
+  #
+  # GCS is *not* emulated the same way: fake-gcs-server doesn't correctly
+  # implement the batch API that Beam's WriteToText needs for its
+  # temp-to-final rename step ("Bad response: not multi-part"), a known gap
+  # in that project rather than something fixable here. LOCAL_MODE instead
+  # points the "bucket" paths at a local ./data/gcs/ directory tree, which
+  # Beam and Spark already read/write natively — simpler and fully
+  # reliable rather than fighting an emulator that's broken for our case.
+
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:emulators
+    profiles: ["local"]
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"
+
 volumes:
   postgres_data:
