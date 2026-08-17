@@ -1,6 +1,9 @@
 
 x-airflow-common: &airflow-common
-  image: apache/airflow:2.8.1-python3.10
+  build:
+    context: ./airflow
+    dockerfile: Dockerfile
+  image: gcp-de-pipeline-airflow:2.8.1-custom
   environment:
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
@@ -9,17 +12,6 @@ x-airflow-common: &airflow-common
     GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/key.json
     GCP_PROJECT_ID: ${GCP_PROJECT_ID}
     GCP_BUCKET_NAME: ${GCP_BUCKET_NAME}
-    # Installed at container start so the DAG's BashOperator tasks can import
-    # these. NOTE: does not include pyspark — the base Airflow image has no
-    # JDK, so spark_transform_load must currently be run outside Airflow
-    # (`make spark` / `python spark/transform.py`) until the image is
-    # extended with a JRE.
-    _PIP_ADDITIONAL_REQUIREMENTS: >-
-      google-cloud-pubsub>=2.19.0
-      google-cloud-storage>=2.18.2
-      apache-beam[gcp]==2.61.0
-      faker>=22.0.0
-      python-dotenv>=1.0.0
   env_file:
     - .env
   volumes:

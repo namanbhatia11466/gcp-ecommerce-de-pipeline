@@ -1,0 +1,10 @@
+# Deps for the pipeline scripts invoked by orders_pipeline_dag.py's
+# BashOperator tasks. Kept separate from the top-level requirements.txt so
+# we don't drag dbt/pytest (and their dependency trees) into the Airflow
+# image and risk conflicts with Airflow's own pinned constraints.
+google-cloud-pubsub>=2.19.0
+google-cloud-storage>=2.18.2
+apache-beam[gcp]==2.61.0
+pyspark==3.5.0
+faker>=22.0.0
+python-dotenv>=1.0.0
