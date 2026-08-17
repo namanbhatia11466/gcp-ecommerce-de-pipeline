@@ -41,7 +41,7 @@ class ValidateAndEnrich(beam.DoFn):
             yield beam.pvalue.TaggedOutput("dead_letter", element)
             return
 
-        required = ["order_id", "user_id", "product_id", "amount", "status"]
+        required = ["order_id", "customer_id", "product_id", "amount", "status"]
         missing = [f for f in required if not order.get(f)]
 
         if missing or order.get("amount", 0) <= 0:
@@ -52,9 +52,11 @@ class ValidateAndEnrich(beam.DoFn):
         order["processed_at"] = datetime.utcnow().isoformat()
         order["status"] = order.get("status", "").upper()
         amount = order.get("amount", 0)
+        # Thresholds calibrated to the real Olist order-line amount
+        # distribution (BRL): median ~81, 90th percentile ~255.
         order["value_tier"] = (
-            "high" if amount >= 1000 else
-            "medium" if amount >= 100 else
+            "high" if amount >= 250 else
+            "medium" if amount >= 80 else
             "low"
         )
 

@@ -6,18 +6,20 @@ with stg_orders as (
 
 select
     order_id,
-    user_id,
+    customer_id,
     product_id,
-    product_name,
+    product_category,
     quantity,
     unit_price,
     amount,
     revenue,
+    freight_value,
     currency,
     status,
     value_tier,
     order_size,
-    country,
+    payment_type,
+    customer_state,
     order_date,
     created_at
 from stg_orders

@@ -14,7 +14,7 @@ dbt-bigquery>=1.7.0
 
 # Utilities
 pandas>=2.1.4
-faker>=22.0.0
+pyarrow>=16.0.0
 python-dotenv>=1.0.0
 
 # Testing

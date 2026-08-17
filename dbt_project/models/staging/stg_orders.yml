@@ -3,15 +3,16 @@ version: 2
 models:
   - name: stg_orders
     description: >
-      Cleaned, one-row-per-order staging view on top of the raw BigQuery
-      orders table loaded by spark/transform.py.
+      Cleaned, one-row-per-(order, product) staging view on top of the raw
+      BigQuery orders table loaded by spark/transform.py. Sourced from the
+      real Olist Brazilian e-commerce dataset - order_id is not unique on
+      its own since an order can contain multiple products.
     columns:
       - name: order_id
-        description: Unique order identifier.
+        description: Order identifier - not unique alone, see grain note above.
         tests:
-          - unique
           - not_null
-      - name: user_id
+      - name: customer_id
         tests:
           - not_null
       - name: amount
@@ -22,7 +23,7 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ["PLACED", "PAID", "SHIPPED", "DELIVERED"]
+                values: ["CREATED", "APPROVED", "PROCESSING", "INVOICED", "SHIPPED", "DELIVERED", "UNAVAILABLE", "CANCELED"]
       - name: order_date
         tests:
           - not_null

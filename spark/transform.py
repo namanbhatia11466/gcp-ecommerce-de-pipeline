@@ -82,11 +82,11 @@ def transform(spark: SparkSession):
     # ── Transformations ──────────────────────────────────
     df_clean = (
         df
-        # Cast types
+        # Cast types (customer_id is a real Olist hash, not numeric - no cast)
         .withColumn("amount", col("amount").cast(DoubleType()))
         .withColumn("unit_price", col("unit_price").cast(DoubleType()))
+        .withColumn("freight_value", col("freight_value").cast(DoubleType()))
         .withColumn("quantity", col("quantity").cast(IntegerType()))
-        .withColumn("user_id", col("user_id").cast(IntegerType()))
 
         # Derive order_date from created_at
         .withColumn("order_date", to_date(col("created_at")))
@@ -94,11 +94,12 @@ def transform(spark: SparkSession):
         # Round monetary values to 2 decimal places
         .withColumn("amount", spark_round(col("amount"), 2))
         .withColumn("unit_price", spark_round(col("unit_price"), 2))
+        .withColumn("freight_value", spark_round(col("freight_value"), 2))
 
-        # Derive revenue = quantity * unit_price
+        # Derive revenue = amount + freight (total actually charged for the line)
         .withColumn(
             "revenue",
-            spark_round(col("quantity") * col("unit_price"), 2)
+            spark_round(col("amount") + col("freight_value"), 2)
         )
 
         # Categorize order size
@@ -112,27 +113,30 @@ def transform(spark: SparkSession):
         # Add load timestamp
         .withColumn("loaded_at", current_timestamp())
 
-        # Drop duplicates on order_id
-        .dropDuplicates(["order_id"])
+        # Drop duplicates on the natural key - order_id alone isn't unique,
+        # an order can have multiple product lines
+        .dropDuplicates(["order_id", "product_id"])
 
         # Drop nulls on critical fields
-        .dropna(subset=["order_id", "user_id", "amount"])
+        .dropna(subset=["order_id", "customer_id", "amount"])
 
         # Select final columns in clean order
         .select(
             "order_id",
-            "user_id",
+            "customer_id",
             "product_id",
-            "product_name",
+            "product_category",
             "quantity",
             "unit_price",
             "amount",
             "revenue",
+            "freight_value",
             "currency",
             "status",
             "value_tier",
             "order_size",
-            "country",
+            "payment_type",
+            "customer_state",
             "order_date",
             "created_at",
             "processed_at",

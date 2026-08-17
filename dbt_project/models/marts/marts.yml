@@ -2,14 +2,22 @@ version: 2
 
 models:
   - name: fct_orders
-    description: Order-grain fact table, one row per order.
+    description: >
+      Order-line-grain fact table, one row per (order, product) - matches
+      stg_orders' grain, since a single Olist order can contain multiple
+      products.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - order_id
+              - product_id
     columns:
       - name: order_id
         tests:
-          - unique
           - not_null
 
   - name: agg_sales_daily
     description: >
-      Daily order counts and revenue, grouped by status and country.
-      Grain is one row per (order_date, status, country).
+      Daily order/line counts and revenue, grouped by status and Brazilian
+      customer state. Grain is one row per (order_date, status, customer_state).

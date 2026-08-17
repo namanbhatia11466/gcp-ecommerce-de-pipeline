@@ -7,4 +7,6 @@ sources:
     description: Raw orders loaded by spark/transform.py.
     tables:
       - name: orders
-        description: One row per order, as landed by the Spark load job.
+        description: >
+          One row per (order, product) line from the real Olist dataset,
+          as landed by the Spark load job.
