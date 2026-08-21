@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 
-from airflow import DAG
 from airflow.operators.bash import BashOperator
+
+from airflow import DAG
 
 default_args = {
     "owner": "data-eng",
@@ -18,7 +19,6 @@ with DAG(
     catchup=False,
     tags=["orders", "gcp"],
 ) as dag:
-
     produce_orders = BashOperator(
         task_id="produce_orders",
         bash_command="python /opt/airflow/ingestion/producer.py --num-events 20",

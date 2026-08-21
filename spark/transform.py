@@ -1,13 +1,12 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import (
-    col, to_date, round as spark_round,
-    when, current_timestamp, lit
-)
-from pyspark.sql.types import DoubleType, IntegerType
 import os
 import sys
 from pathlib import Path
+
 from dotenv import load_dotenv
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, current_timestamp, to_date, when
+from pyspark.sql.functions import round as spark_round
+from pyspark.sql.types import DoubleType, IntegerType
 
 sys.stdout.reconfigure(encoding="utf-8")
 load_dotenv()
@@ -36,25 +35,19 @@ def create_spark_session():
         return builder.getOrCreate()
 
     return (
-        builder
-        .config(
+        builder.config(
             "spark.jars.packages",
-            "com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.36.1"
+            "com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.36.1",
         )
-        .config(
-            "spark.hadoop.google.cloud.auth.service.account.enable", "true"
-        )
+        .config("spark.hadoop.google.cloud.auth.service.account.enable", "true")
         .config(
             "spark.hadoop.google.cloud.auth.service.account.json.keyfile",
-            os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+            os.getenv("GOOGLE_APPLICATION_CREDENTIALS"),
         )
-        .config(
-            "spark.hadoop.fs.gs.impl",
-            "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"
-        )
+        .config("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")
         .config(
             "spark.hadoop.fs.AbstractFileSystem.gs.impl",
-            "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS"
+            "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS",
         )
         .getOrCreate()
     )
@@ -70,13 +63,15 @@ def transform(spark: SparkSession):
         # demo path. Explicit file paths skip that code path entirely.
         input_files = [str(p) for p in Path(INPUT_PATH).parent.glob(Path(INPUT_PATH).name)]
         if not input_files:
-            raise SystemExit(f"No input files found matching {INPUT_PATH} - run the beam stage first.")
+            raise SystemExit(
+                f"No input files found matching {INPUT_PATH} - run the beam stage first."
+            )
         df = spark.read.json(input_files)
     else:
         df = spark.read.json(INPUT_PATH)
 
     print(f"   Raw record count: {df.count()}")
-    print(f"   Schema:")
+    print("   Schema:")
     df.printSchema()
 
     # ── Transformations ──────────────────────────────────
@@ -87,39 +82,28 @@ def transform(spark: SparkSession):
         .withColumn("unit_price", col("unit_price").cast(DoubleType()))
         .withColumn("freight_value", col("freight_value").cast(DoubleType()))
         .withColumn("quantity", col("quantity").cast(IntegerType()))
-
         # Derive order_date from created_at
         .withColumn("order_date", to_date(col("created_at")))
-
         # Round monetary values to 2 decimal places
         .withColumn("amount", spark_round(col("amount"), 2))
         .withColumn("unit_price", spark_round(col("unit_price"), 2))
         .withColumn("freight_value", spark_round(col("freight_value"), 2))
-
         # Derive revenue = amount + freight (total actually charged for the line)
-        .withColumn(
-            "revenue",
-            spark_round(col("amount") + col("freight_value"), 2)
-        )
-
+        .withColumn("revenue", spark_round(col("amount") + col("freight_value"), 2))
         # Categorize order size
         .withColumn(
             "order_size",
             when(col("quantity") >= 4, "bulk")
             .when(col("quantity") >= 2, "standard")
-            .otherwise("single")
+            .otherwise("single"),
         )
-
         # Add load timestamp
         .withColumn("loaded_at", current_timestamp())
-
         # Drop duplicates on the natural key - order_id alone isn't unique,
         # an order can have multiple product lines
         .dropDuplicates(["order_id", "product_id"])
-
         # Drop nulls on critical fields
         .dropna(subset=["order_id", "customer_id", "amount"])
-
         # Select final columns in clean order
         .select(
             "order_id",
@@ -140,7 +124,7 @@ def transform(spark: SparkSession):
             "order_date",
             "created_at",
             "processed_at",
-            "loaded_at"
+            "loaded_at",
         )
     )
 
@@ -154,14 +138,11 @@ def transform(spark: SparkSession):
 def load_to_bigquery(df, spark: SparkSession):
     print(f"\n📤 Loading to BigQuery: {BQ_TABLE}...")
 
-    df.write \
-        .format("bigquery") \
-        .option("table", BQ_TABLE) \
-        .option("temporaryGcsBucket", BUCKET) \
-        .option("partitionField", "order_date") \
-        .option("clusteredFields", "status,product_id") \
-        .mode("append") \
-        .save()
+    df.write.format("bigquery").option("table", BQ_TABLE).option(
+        "temporaryGcsBucket", BUCKET
+    ).option("partitionField", "order_date").option("clusteredFields", "status,product_id").mode(
+        "append"
+    ).save()
 
     print(f"✅ Successfully loaded to {BQ_TABLE}")
 

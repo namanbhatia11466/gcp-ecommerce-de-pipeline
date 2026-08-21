@@ -1,11 +1,12 @@
-import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions
 import json
+import logging
 import os
 import sys
-import logging
 from datetime import datetime
 from pathlib import Path
+
+import apache_beam as beam
+from apache_beam.options.pipeline_options import PipelineOptions
 from dotenv import load_dotenv
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -54,11 +55,7 @@ class ValidateAndEnrich(beam.DoFn):
         amount = order.get("amount", 0)
         # Thresholds calibrated to the real Olist order-line amount
         # distribution (BRL): median ~81, 90th percentile ~255.
-        order["value_tier"] = (
-            "high" if amount >= 250 else
-            "medium" if amount >= 80 else
-            "low"
-        )
+        order["value_tier"] = "high" if amount >= 250 else "medium" if amount >= 80 else "low"
 
         yield json.dumps(order)
 
@@ -82,33 +79,29 @@ def run():
     print("-" * 50)
 
     with beam.Pipeline(options=options) as p:
-
         results = (
             p
-            | "ReadFromGCS"     >> beam.io.ReadFromText(INPUT_PATH)
-            | "ValidateEnrich"  >> beam.ParDo(ValidateAndEnrich()).with_outputs(
-                                        "dead_letter", main="valid"
-                                   )
+            | "ReadFromGCS" >> beam.io.ReadFromText(INPUT_PATH)
+            | "ValidateEnrich"
+            >> beam.ParDo(ValidateAndEnrich()).with_outputs("dead_letter", main="valid")
         )
 
         # Write valid orders
         (
             results.valid
-            | "WriteValid" >> beam.io.WriteToText(
-                OUTPUT_PATH,
-                file_name_suffix=".jsonl",
-                shard_name_template="-SS-of-NN"
-              )
+            | "WriteValid"
+            >> beam.io.WriteToText(
+                OUTPUT_PATH, file_name_suffix=".jsonl", shard_name_template="-SS-of-NN"
+            )
         )
 
         # Write dead letter
         (
             results.dead_letter
-            | "WriteDeadLetter" >> beam.io.WriteToText(
-                DEAD_LETTER_PATH,
-                file_name_suffix=".jsonl",
-                shard_name_template="-SS-of-NN"
-              )
+            | "WriteDeadLetter"
+            >> beam.io.WriteToText(
+                DEAD_LETTER_PATH, file_name_suffix=".jsonl", shard_name_template="-SS-of-NN"
+            )
         )
 
     print("-" * 50)

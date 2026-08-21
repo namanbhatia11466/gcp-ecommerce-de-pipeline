@@ -9,9 +9,11 @@ Run after downloading the full dataset:
     kaggle datasets download -d olistbr/brazilian-ecommerce -p data/raw/olist --unzip
     python scripts/build_local_sample.py
 """
+
 import sys
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -49,7 +51,9 @@ def main():
     sampled_products.to_csv(SAMPLE_DIR / "olist_products_dataset.csv", index=False)
     categories.to_csv(SAMPLE_DIR / "product_category_name_translation.csv", index=False)
 
-    print(f"✅ Wrote {SAMPLE_ORDERS} real orders ({len(sampled_items)} order lines) to {SAMPLE_DIR}")
+    print(
+        f"✅ Wrote {SAMPLE_ORDERS} real orders ({len(sampled_items)} order lines) to {SAMPLE_DIR}"
+    )
 
 
 if __name__ == "__main__":

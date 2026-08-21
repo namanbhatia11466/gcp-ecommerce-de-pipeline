@@ -1,0 +1,3 @@
+# Dev-only tooling - not needed to run the pipeline itself.
+-r requirements.txt
+ruff>=0.16.0

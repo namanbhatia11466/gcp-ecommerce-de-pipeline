@@ -7,11 +7,7 @@ data from a Pub/Sub feed all the way to analytics-ready BigQuery models —
 built to show what a production-shaped GCP data stack actually looks like,
 not just a toy ETL script.
 
-```
-Pub/Sub → Apache Beam → Cloud Storage → PySpark → BigQuery → dbt
-                                ↑
-                      orchestrated by Airflow
-```
+![Architecture: Pub/Sub → Apache Beam (with a dead-letter branch) → Cloud Storage → PySpark → BigQuery → dbt, with Airflow orchestrating ingestion through transform](docs/architecture.svg)
 
 ## Why I built this
 

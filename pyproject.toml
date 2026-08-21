@@ -1,0 +1,19 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    "venv",
+    "data",
+    "dbt_project/target",
+    "dbt_project/dbt_packages",
+    "airflow/logs",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # line length is a formatter concern, not a lint failure
+]
+
+[tool.ruff.lint.isort]
+known-first-party = []

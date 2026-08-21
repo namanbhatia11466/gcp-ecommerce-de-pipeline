@@ -4,16 +4,16 @@ against the emulator (it starts empty, unlike a real GCP project where
 these are provisioned once via Terraform/gcloud) and the local directory
 standing in for the GCS bucket. Idempotent - safe to re-run.
 """
+
 import os
 import sys
 from pathlib import Path
-
-sys.stdout.reconfigure(encoding="utf-8")
 
 from dotenv import load_dotenv
 from google.api_core.exceptions import AlreadyExists
 from google.cloud import pubsub_v1
 
+sys.stdout.reconfigure(encoding="utf-8")
 load_dotenv()
 
 PROJECT_ID = os.getenv("GCP_PROJECT_ID", "local-dev")

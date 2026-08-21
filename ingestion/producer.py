@@ -1,13 +1,13 @@
-import json
-import time
 import argparse
-import sys
+import json
 import os
+import sys
+import time
 from pathlib import Path
 
 import pandas as pd
-from google.cloud import pubsub_v1
 from dotenv import load_dotenv
+from google.cloud import pubsub_v1
 
 sys.stdout.reconfigure(encoding="utf-8")
 load_dotenv()
@@ -77,10 +77,10 @@ def load_orders() -> pd.DataFrame:
     )
 
     df = (
-        lines
-        .merge(
+        lines.merge(
             orders[["order_id", "customer_id", "order_status", "order_purchase_timestamp"]],
-            on="order_id", how="inner",
+            on="order_id",
+            how="inner",
         )
         .merge(customers[["customer_id", "customer_state"]], on="customer_id", how="left")
         .merge(products[["product_id", "product_category"]], on="product_id", how="left")
@@ -127,8 +127,10 @@ def publish_orders(num_events: int, delay: float, seed: int = None):
         order = row_to_order(row)
         data = json.dumps(order).encode("utf-8")
         future = publisher.publish(topic_path, data)
-        print(f"[{i+1}/{len(sample)}] Published order {order['order_id']} | "
-              f"R${order['amount']} | {order['status']}")
+        print(
+            f"[{i + 1}/{len(sample)}] Published order {order['order_id']} | "
+            f"R${order['amount']} | {order['status']}"
+        )
         future.result()  # wait for confirmation
         time.sleep(delay)
 
@@ -140,7 +142,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-events", type=int, default=10)
     parser.add_argument("--delay", type=float, default=0.5)
-    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducible sampling")
+    parser.add_argument(
+        "--seed", type=int, default=None, help="Random seed for reproducible sampling"
+    )
     args = parser.parse_args()
 
     publish_orders(args.num_events, args.delay, args.seed)
