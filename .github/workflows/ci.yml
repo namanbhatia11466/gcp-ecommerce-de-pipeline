@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-parse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Compile-check all Python files
+        run: python -m py_compile $(git ls-files '*.py')
+
+      - name: dbt parse (validates models/tests compile - no BigQuery connection made)
+        env:
+          GCP_PROJECT_ID: ci-dummy-project
+          GCP_REGION: US
+          BQ_RAW_DATASET: raw
+          BQ_STAGING_DATASET: staging
+          BQ_MARTS_DATASET: marts
+          GOOGLE_APPLICATION_CREDENTIALS: /dev/null
+          DBT_PROFILES_DIR: dbt_project
+        run: |
+          dbt deps --project-dir dbt_project
+          dbt parse --project-dir dbt_project --no-partial-parse
+
+  local-mode-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Start Pub/Sub emulator
+        run: |
+          docker run -d --name pubsub-emulator -p 8085:8085 \
+            gcr.io/google.com/cloudsdktool/cloud-sdk:emulators \
+            gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8085 > /dev/null && break
+            sleep 2
+          done
+
+      - name: Run the full pipeline in LOCAL_MODE against real Olist sample data
+        env:
+          LOCAL_MODE: "true"
+          GCP_PROJECT_ID: local-dev
+          PUBSUB_EMULATOR_HOST: localhost:8085
+        run: |
+          python scripts/local_setup.py
+          python ingestion/producer.py --num-events 20 --delay 0 --seed 1
+          python scripts/pull_messages.py
+          python pipeline/beam_pipeline.py
+          python spark/transform.py
+
+      - name: Verify warehouse output
+        run: |
+          python -c "
+          import pandas as pd
+          df = pd.read_parquet('data/warehouse/orders')
+          assert len(df) > 0, 'no rows written to the local warehouse'
+          print(f'OK: {len(df)} rows written, columns: {list(df.columns)}')
+          "

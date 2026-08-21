@@ -1,5 +1,7 @@
 # GCP E-Commerce Data Engineering Pipeline
 
+[![CI](https://github.com/namanbhatia11466/gcp-ecommerce-de-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/namanbhatia11466/gcp-ecommerce-de-pipeline/actions/workflows/ci.yml)
+
 An end-to-end batch/streaming pipeline that takes real e-commerce order
 data from a Pub/Sub feed all the way to analytics-ready BigQuery models —
 built to show what a production-shaped GCP data stack actually looks like,
@@ -182,6 +184,10 @@ correct but unexercised:
 - **Real GCP**: run once end-to-end against a live project. Not kept
   running continuously — see `LOCAL_MODE` above for why that's a
   deliberate choice rather than a gap.
+- **CI**: every push/PR to `main` runs `dbt parse` against the full
+  project and runs the *entire* LOCAL_MODE pipeline end-to-end (real
+  emulator, real bundled Olist sample data, real Parquet output checked
+  for actual rows) — not just a lint pass. See `.github/workflows/ci.yml`.
 
 ## Cost
 
@@ -195,7 +201,7 @@ scale.
 - [x] dbt models for warehouse modeling
 - [x] Real dataset (Olist) instead of synthetic data
 - [x] Zero-cost local demo mode (LOCAL_MODE)
-- [ ] GitHub Actions CI/CD pipeline
+- [x] GitHub Actions CI/CD pipeline
 - [ ] Dataflow deployment for production streaming
 
 ## Project structure
