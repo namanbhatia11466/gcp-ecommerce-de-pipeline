@@ -217,7 +217,8 @@ gcp-ecommerce-de-pipeline/
 
 ## License / attribution
 
-Pipeline code is mine. The dataset is the [Olist Brazilian E-Commerce
-dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce),
+Pipeline code is [MIT licensed](LICENSE). The dataset is the [Olist
+Brazilian E-Commerce dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce),
 © Olist, licensed CC-BY-NC-SA-4.0 (non-commercial) — used here for
-educational/portfolio purposes.
+educational/portfolio purposes; the committed sample in
+`data/sample/olist/` carries the same license.
