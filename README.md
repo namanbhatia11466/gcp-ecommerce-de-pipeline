@@ -180,10 +180,17 @@ correct but unexercised:
 - **Real GCP**: run once end-to-end against a live project. Not kept
   running continuously — see `LOCAL_MODE` above for why that's a
   deliberate choice rather than a gap.
-- **CI**: every push/PR to `main` runs `dbt parse` against the full
-  project and runs the *entire* LOCAL_MODE pipeline end-to-end (real
-  emulator, real bundled Olist sample data, real Parquet output checked
-  for actual rows) — not just a lint pass. See `.github/workflows/ci.yml`.
+- **CI**: every push/PR to `main` lints (`ruff`), runs the `pytest` suite,
+  runs `dbt parse` against the full project, and runs the *entire*
+  LOCAL_MODE pipeline end-to-end (real emulator, real bundled Olist sample
+  data, real Parquet output checked for actual rows) — not just a lint
+  pass. See `.github/workflows/ci.yml`.
+- **Tests**: `tests/` covers `ValidateAndEnrich`'s dead-letter routing and
+  `value_tier` thresholds, plus `producer.py`'s order-collapsing logic —
+  the exact area a real bug lived in during the Olist migration (see
+  design decisions above). That specific test was checked against a
+  reintroduced version of the bug and confirmed it actually fails, not
+  just written and assumed to catch it.
 
 ## Cost
 
@@ -211,8 +218,11 @@ gcp-ecommerce-de-pipeline/
 ├── airflow/dags/        # orders_pipeline DAG
 ├── dbt_project/         # staging + marts models
 ├── data/sample/olist/   # committed real-data sample (1,000 orders)
+├── tests/               # pytest - beam validation, producer grain logic
+├── docs/architecture.svg
+├── .github/workflows/   # CI: lint, tests, dbt parse, full LOCAL_MODE run
 ├── docker-compose.yml   # Airflow + Spark + LOCAL_MODE emulators
-└── requirements.txt
+└── requirements.txt / requirements-dev.txt
 ```
 
 ## License / attribution

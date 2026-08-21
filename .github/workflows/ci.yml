@@ -27,6 +27,9 @@ jobs:
           ruff check .
           ruff format --check .
 
+      - name: pytest
+        run: pytest -v
+
       - name: dbt parse (validates models/tests compile - no BigQuery connection made)
         env:
           GCP_PROJECT_ID: ci-dummy-project
